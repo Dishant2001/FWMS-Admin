@@ -4,7 +4,7 @@ app = Flask(__name__)
 app.secret_key = '4f2bfa6592418c6a7e50573998ce99db'
 
 # Mock database for user credentials
-users = {'fazle': '123456', 'gauri': '789100'}
+users = {'test1': '123456', 'test2': '789100'}
 
 # Here we are creating two routes for login normal and /login 
 # Both work same 
@@ -16,14 +16,14 @@ def login():
         password = request.form['password']
         if username in users and users[username] == password:
             session['username'] = username
-            return redirect(url_for('index'))
+            return redirect(url_for('home'))
         else:
             return render_template('login.html', error='Invalid username or password')  
     return render_template('login.html')
 
 # This is the route for home page were strategies run
-@app.route('/Home')
-def index():
+@app.route('/home')
+def home():
     return render_template('home.html')
 
 @app.route('/logout')

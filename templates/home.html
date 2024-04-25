@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FWMS</title>
     <link rel="stylesheet" href="..\static\home-style.css">
-    <script src="script.js"></script>
+    <!-- <script src="script.js"></script> -->
 </head>
 <body>
     <header class="header">
         <nav class="navbar">
             <div class="logo">Strategy</div>
-            <div class="center">Home</div>
-            <div class="logout">Logout</div>
+            <div class="navbar-nav">
+                {% if 'username' in session %}
+                <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
+                {% else %}
+                <p>You are not logged in. <a href="{{ url_for('login') }}">Login</a></p>
+            {% endif %}
+        </div>
         </nav>
     </header>
 
