@@ -6,10 +6,9 @@ app.secret_key = '4f2bfa6592418c6a7e50573998ce99db'
 # Mock database for user credentials
 users = {'fazle': '123456', 'gauri': '789100'}
 
+# Here we are creating two routes for login normal and /login 
+# Both work same 
 @app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -19,8 +18,13 @@ def login():
             session['username'] = username
             return redirect(url_for('index'))
         else:
-            return render_template('login.html', error='Invalid username or password')
+            return render_template('login.html', error='Invalid username or password')  
     return render_template('login.html')
+
+# This is the route for home page were strategies run
+@app.route('/Home')
+def index():
+    return render_template('home.html')
 
 @app.route('/logout')
 def logout():
