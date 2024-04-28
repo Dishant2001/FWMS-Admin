@@ -1,93 +1,93 @@
 from jproperties import Properties
 import datetime as dt
 import time
-from pya3 import Aliceblue, OrderType, TransactionType, ProductType
+from resources import *
 
 
 # Importing config file
 configs = Properties()
-with open(r'..\app_config.properties', 'rb') as config_file:
+with open(r'.\app_config.jproperties', 'rb') as config_file:
     configs.load(config_file)
-
-# Creating alice blue client
-alice = Aliceblue(user_id=configs.get("NANA_ID").data,api_key=configs.get("NANA_API_KEY").data)
-
-sessionid = alice.get_session_id()
-print(sessionid)
-
-banknifty = alice.get_instrument_by_symbol('INDICES','NIFTY BANK')
-
-# Check trade Function
-def check_trade():
-    alice.get_session_id()['sessionID']
-    signal = True
-    days=1
-    while(signal):
-        try:
-            exchange='INDICES'
-            spot_symbol='NIFTY BANK'
-            interval='D'
-            indices=True
-            from_date=dt.datetime.now()-dt.timedelta(days=days)
-            to_date=dt.datetime.now()
-            token=alice.get_instrument_by_symbol(exchange,spot_symbol)
-            data=alice.get_historical(token,from_date,to_date,interval,indices)
-            print(data)
-            y_high = data['high'][0]
-            y_low = data['low'][0]
-            today_open = data['open'][1]
-            if(y_high > today_open and today_open > y_low):
-                signal = False
-                return True
-            else:
-                print("No Trade today")
-                signal = False
-                return False
-        except:
-            days = days + 1
-
-# Checking trade for today
-Trade = check_trade()
-
-# Get expiry function
-def get_curr_expiry(spot_ltp):
-    spot_ltp = int(spot_ltp)
-    print(f"Current expiry for {spot_ltp}")
-    global datecale
-    datecale = dt.date.today()
-    while(1):
-        expiry = alice.get_instrument_for_fno(exch="NFO",symbol='BANKNIFTY', expiry_date=str(datecale), is_fut=False,strike=spot_ltp, is_CE=True)
-        #print(expiry)
-        try:
-            if list(expiry.values())[0] == 'Not_ok':
-                print(f"{datecale} is not expiry")
-                datecale = datecale + dt.timedelta(days=1)
-            else:
-                return datecale
-                break
-        except:
-            return datecale
 
 # repeat variables
 qty = int(configs.get('ONE_LOT_QTY').data)
+End = False
 
-# Basket Oreder function
-def place_order(order_type): # order_type : Buy, Sell
-    order1 = {  "instrument"        : ce_instrument,
-                    "order_type"        : OrderType.Market,
-                    "quantity"          : 25,
-                    "transaction_type"  : TransactionType.order_type,
-                    "product_type"      : ProductType.Intraday,
-                    "order_tag"         : "Order1"}
-    order2 = {  "instrument"        : pe_instrument,
-                    "order_type"        : OrderType.Market,
-                    "quantity"          : 25,
-                    "transaction_type"  : TransactionType.order_type,
-                    "product_type"      : ProductType.Intraday,
-                    "order_tag"         : "Order2"}
-    orders = [order1, order2]
-    border = alice.place_basket_order(orders)
-    print("Order placed")
-    print("\n\n")
-    print(f"LTP is {bnf_spot_ltp} Sell PE and CE on {round_bnf_spot_ltp} Price at expiry {bnf_expiry_date}.")
-    return border
+# Login check
+status = login(user_id=configs.get("NANA_ID").data,api_key=configs.get("NANA_API_KEY").data)
+if (status==True):
+    # Checking trade for today
+    Trade = True#check_trade()
+    while(1):
+        if End == True:
+            print("Trade Executed")
+            break
+        elif (Trade == True):
+            print(dt.datetime.now().time())
+            if dt.datetime.now().time()>=dt.time(9,20,1):
+                alice = Aliceblue(user_id=configs.get("NANA_ID").data,api_key=configs.get("NANA_API_KEY").data)
+                banknifty = alice.get_instrument_by_symbol('INDICES','NIFTY BANK')
+                bnf_spot_ltp = float(alice.get_scrip_info(banknifty)['LTP'])
+                round_bnf_spot_ltp = round((bnf_spot_ltp/100),0)*100
+                bnf_expiry_date = get_curr_expiry(round_bnf_spot_ltp)
+                ce_instrument = alice.get_instrument_for_fno(exch="NFO",symbol='BANKNIFTY', expiry_date=str(bnf_expiry_date),
+                                                                    is_fut=False,strike=round_bnf_spot_ltp, is_CE=True)
+                pe_instrument = alice.get_instrument_for_fno(exch="NFO",symbol='BANKNIFTY', expiry_date=str(bnf_expiry_date),
+                                                                    is_fut=False,strike=round_bnf_spot_ltp, is_CE=False)
+                cesell = float(alice.get_scrip_info(ce_instrument)['LTP'])
+                pesell = float(alice.get_scrip_info(pe_instrument)['LTP'])
+                val_sum = cesell + pesell
+
+                if ((val_sum > 272)):
+                    print(val_sum)
+                    place_b_order("Sell",qty,ce_instrument,pe_instrument)
+                    print(f"LTP is {bnf_spot_ltp} Sell PE and CE on {round_bnf_spot_ltp} Price at expiry {bnf_expiry_date}.")
+
+                    # Calculating the Target and the StopLoss
+                    target = val_sum * 0.9
+                    stoploss = val_sum * 1.10
+                    print("Target: ", target)
+                    print("Stoploss: ",stoploss)
+                    print("Value Sum: ",val_sum)
+
+                    # Calculating Trade
+                    while(1):
+                        time.sleep(5)
+                        celtp = float(alice.get_scrip_info(ce_instrument)['LTP'])
+                        peltp = float(alice.get_scrip_info(pe_instrument)['LTP'])
+                        val_ltp = celtp + peltp
+
+                        if (val_ltp <= target):
+                            print("Target Achive Square Off the Trade at: ",val_ltp)
+                            place_b_order("Buy",qty,ce_instrument,pe_instrument)
+                            End = True
+                            break
+
+                        elif (val_ltp >= stoploss):
+                            print("StopLoss Hit Square Off the Trade at: ", val_ltp)
+                            place_b_order("Buy",qty,ce_instrument,pe_instrument)
+                            End = True
+                            break
+
+                        elif (dt.datetime.now().time()>=dt.time(15,15,0)):
+                            print("Market Close Square Off the Trade at: ", val_ltp)
+                            place_b_order("Buy",qty,ce_instrument,pe_instrument)
+                            End = True
+                            break
+
+                        else:
+                            try :
+                                print(f"Current Sum: {val_ltp} and Running Profit/Loss: {(val_sum)-(val_ltp)}")
+                            except:
+                                print("Not get LTP")
+                                time.sleep(5)
+                else:
+                    print(f"{val_sum} is less then 272 not trade today")
+                    break
+            else:
+                time.sleep(1)
+        else:
+            print("Not Trade today")
+            break
+else:
+    print("Please login with web or app.")
