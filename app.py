@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from Strategies.BasicshortStraddle import *
+import json
 
 app = Flask(__name__)
 app.secret_key = '4f2bfa6592418c6a7e50573998ce99db'
@@ -30,6 +32,13 @@ def home():
 def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
+
+@app.route('/run-strategy/<id>',methods=['GET'])
+def runStrategy(id):
+    if id == "run-1":
+        res = strategy1()
+        return json.dumps({'result':res})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
